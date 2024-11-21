@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:latest
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: Kodeblue12
+      MYSQL_DATABASE: products
+      MYSQL_USER: rldettloff
+      MYSQL_PASSWORD: Kodeblue12
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+    ports:
+      - "4545:4545"
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    restart: always
+    depends_on:
+      - db
+    environment:
+      PMA_HOST: db
+      MYSQL_ROOT_PASSWORD: Kodeblue12
+
+  app:
+    build: .
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - "3000:3000"
+    environment:
+      DB_HOST: db
+      DB_USER: rldettloff
+      DB_PASSWORD: Kodeblue12
+      DB_NAME: products
+
+  chatbot:
+    build: .
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - DB_HOST=localhost
+      - DB_PORT=3306
+      - DB_DATABASE=products
+      - DB_USER=rldettloff
+      - DB_PASSWORD=Kodeblue12
+      - API_KEY=your
