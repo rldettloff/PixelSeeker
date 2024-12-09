@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import './App.css';
-import '@chatscope/chat-ui-kit-styles/dist/default/styles.min.css';
+// Import necessary modules and styles
+import { useState } from 'react'; // React hook to manage state
+import './App.css'; // Import application-specific styles
+import '@chatscope/chat-ui-kit-styles/dist/default/styles.min.css'; // Chat UI kit default styles
 import {
   MainContainer,
   ChatContainer,
@@ -8,11 +9,13 @@ import {
   Message,
   MessageInput,
   TypingIndicator,
-} from '@chatscope/chat-ui-kit-react';
+} from '@chatscope/chat-ui-kit-react'; // Components for chat UI
 
-const API_KEY = import.meta.env.VITE_API_KEY;
-const RAWG_API_KEY = import.meta.env.VITE_RAWG_API_KEY;
+// Load API keys from environment variables
+const API_KEY = import.meta.env.VITE_API_KEY; // OpenAI API key
+const RAWG_API_KEY = import.meta.env.VITE_RAWG_API_KEY; // RAWG API key for game data
 
+// Define the system message to set the assistant's personality and purpose
 const systemMessage = {
   role: 'system',
   content:
@@ -20,18 +23,23 @@ const systemMessage = {
 };
 
 function App() {
+  // State to manage chat messages
   const [messages, setMessages] = useState([
     {
       message:
         'Welcome to PixelSeeker! Ask me for game recommendations by genre, style, or keywords like "first-person shooters" or "RPGs".',
-      direction: 'incoming',
-      sentTime: 'just now',
-      sender: 'PixelSeeker',
+      direction: 'incoming', // Message direction: 'incoming' or 'outgoing'
+      sentTime: 'just now', // When the message was sent
+      sender: 'PixelSeeker', // Sender of the message
     },
   ]);
+
+  // State to show if PixelSeeker is typing
   const [isTyping, setIsTyping] = useState(false);
 
+  // Function to handle user sending a message
   const handleSend = async (message) => {
+    // Add the user's message to the chat history
     const newMessage = {
       message,
       direction: 'outgoing',
@@ -39,13 +47,17 @@ function App() {
     };
     const newMessages = [...messages, newMessage];
     setMessages(newMessages);
+
+    // Show typing indicator
     setIsTyping(true);
+
+    // Process the user's message
     await processMessage(newMessages);
   };
 
+  // Fetch game recommendations from RAWG API based on a keyword
   async function fetchRAWGGamesByKeyword(keyword) {
     try {
-      // Use RAWG's `tags` or `genres` parameter to filter games by keyword
       const response = await fetch(
         `https://api.rawg.io/api/games?key=${RAWG_API_KEY}&tags=${encodeURIComponent(
           keyword
@@ -59,31 +71,36 @@ function App() {
       const data = await response.json();
 
       if (data.results && data.results.length > 0) {
+        // Map RAWG API results into a simplified format
         return data.results.map((game) => ({
           name: game.name,
-          released: game.released || 'Unknown',
-          rating: game.rating || 'N/A',
+          released: game.released || 'Unknown', // Release date
+          rating: game.rating || 'N/A', // Rating
           platforms: game.platforms
-            ? game.platforms.map((p) => p.platform.name).join(', ')
+            ? game.platforms.map((p) => p.platform.name).join(', ') // Platforms
             : 'Not listed',
         }));
       }
-      return [];
+      return []; // Return empty array if no results are found
     } catch (error) {
       console.error('Error fetching data from RAWG:', error);
-      return [];
+      return []; // Return empty array if an error occurs
     }
   }
 
+  // Process user messages to generate a response
   async function processMessage(chatMessages) {
     const lastMessage = chatMessages[chatMessages.length - 1].message.toLowerCase();
 
     if (lastMessage.includes('recommend')) {
       // Extract the keyword from the user's query
       const keyword = lastMessage.replace('recommend', '').trim();
+
+      // Fetch game recommendations
       const games = await fetchRAWGGamesByKeyword(keyword);
 
       if (games.length > 0) {
+        // Format and display the game recommendations
         const gameList = games
           .map(
             (game) =>
@@ -100,6 +117,7 @@ function App() {
           },
         ]);
       } else {
+        // No games found for the keyword
         setMessages([
           ...chatMessages,
           {
@@ -109,31 +127,32 @@ function App() {
           },
         ]);
       }
-      setIsTyping(false);
+      setIsTyping(false); // Stop typing indicator
       return;
     }
 
-    // Handle other queries using OpenAI
+    // Handle other queries using OpenAI API
     const apiMessages = chatMessages.map((messageObject) => {
-      let role = messageObject.sender === 'PixelSeeker' ? 'assistant' : 'user';
+      const role = messageObject.sender === 'PixelSeeker' ? 'assistant' : 'user';
       return { role: role, content: messageObject.message };
     });
 
     const apiRequestBody = {
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-3.5-turbo', // OpenAI model
       messages: [systemMessage, ...apiMessages],
     };
 
     await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        Authorization: 'Bearer ' + API_KEY,
-        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + API_KEY, // Authorization header with API key
+        'Content-Type': 'application/json', // Content type
       },
-      body: JSON.stringify(apiRequestBody),
+      body: JSON.stringify(apiRequestBody), // Request payload
     })
       .then((data) => data.json())
       .then((data) => {
+        // Add AI response to chat messages
         setMessages([
           ...chatMessages,
           {
@@ -145,6 +164,8 @@ function App() {
       })
       .catch((error) => {
         console.error('Error communicating with OpenAI API:', error);
+
+        // Display error message
         setMessages([
           ...chatMessages,
           {
@@ -155,7 +176,7 @@ function App() {
           },
         ]);
       })
-      .finally(() => setIsTyping(false));
+      .finally(() => setIsTyping(false)); // Stop typing indicator
   }
 
   return (
